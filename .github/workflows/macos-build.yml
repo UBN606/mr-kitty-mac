@@ -1,4 +1,4 @@
-name: Build Mr Kitty for macOS
+name: Build and check Mr Kitty
 
 on:
   workflow_dispatch:
@@ -25,4 +25,33 @@ jobs:
         with:
           name: Mr-Kitty-for-Mac
           path: ${{ runner.temp }}/Mr-Kitty-for-Mac.app.zip
+          if-no-files-found: error
+
+  windows_shared_checks:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Test Codex and Claude chat routing without model calls
+        run: python -m unittest discover -s windows/shared/tests -v
+      - name: Load Windows controller controls
+        shell: pwsh
+        run: |
+          foreach ($path in @('windows/shared/Mr-Kitty-Controller.ps1', 'windows/shared/Start-Mr-Kitty-Shared.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw "PowerShell parse errors in $path`: $($errors -join '; ')" }
+          }
+          & powershell.exe -NoProfile -Sta -ExecutionPolicy Bypass -File 'windows/shared/Mr-Kitty-Controller.ps1' -UiSmokeTest
+          if ($LASTEXITCODE -ne 0) { throw 'Kitty controls did not load' }
+      - name: Package one shared Windows Kitty
+        run: python windows/build-shared-package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mr-Kitty-Windows-Shared
+          path: dist/Mr-Kitty-Windows-Shared-Codex-Claude.zip
           if-no-files-found: error

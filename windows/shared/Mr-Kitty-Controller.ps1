@@ -122,7 +122,7 @@ $curlFrame = [Windows.Media.Imaging.BitmapImage]::new([Uri]::new($curlPath))
 $dockXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="84" Height="42" WindowStyle="None" AllowsTransparency="True"
+        Width="144" Height="42" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ShowInTaskbar="False" ShowActivated="False"
         Topmost="True" ResizeMode="NoResize" Title="Mr. Kitty chat controls">
   <Border CornerRadius="21" Background="#D827303D" BorderBrush="#88FFFFFF"
@@ -134,6 +134,9 @@ $dockXaml = @'
       <Button x:Name="VoiceButton" Width="36" Height="34" FontSize="17" Content="🎙"
               Foreground="White" Background="Transparent" BorderThickness="0"
               ToolTip="Speak to Kitty using Windows voice typing" Cursor="Hand"/>
+      <Button x:Name="ProviderButton" Width="62" Height="34" FontSize="11" Content="Codex"
+              Foreground="White" Background="Transparent" BorderThickness="0"
+              ToolTip="Switch Kitty chat between Codex and Claude" Cursor="Hand"/>
     </StackPanel>
   </Border>
 </Window>
@@ -153,7 +156,7 @@ $composerXaml = @'
         <RowDefinition Height="98"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
-      <TextBlock Text="Message Kitty · Codex" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+      <TextBlock x:Name="ChatHeader" Text="Message Kitty · Codex" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
       <TextBox x:Name="ChatText" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True"
                VerticalScrollBarVisibility="Auto" Padding="8" FontSize="13"
                Foreground="White" Background="#553B4757" BorderThickness="0"/>
@@ -181,15 +184,18 @@ $dock = New-KittyWindow $dockXaml
 $composer = New-KittyWindow $composerXaml
 $writeButton = $dock.FindName('WriteButton')
 $voiceButton = $dock.FindName('VoiceButton')
+$providerButton = $dock.FindName('ProviderButton')
 $chatText = $composer.FindName('ChatText')
+$chatHeader = $composer.FindName('ChatHeader')
 $chatStatus = $composer.FindName('ChatStatus')
 $chatAnswerView = $composer.FindName('ChatAnswer')
 $sendButton = $composer.FindName('SendButton')
 if ($UiSmokeTest) {
-    if (-not $writeButton -or -not $voiceButton -or -not $chatText -or -not $sendButton -or -not $chatAnswerView) {
+    if (-not $writeButton -or -not $voiceButton -or -not $providerButton -or
+        -not $chatHeader -or -not $chatText -or -not $sendButton -or -not $chatAnswerView) {
         throw 'Kitty chat controls did not load.'
     }
-    Write-Output 'Kitty text, voice, send, and reply controls loaded.'
+    Write-Output 'Kitty text, voice, provider, send, and reply controls loaded.'
     exit 0
 }
 $runtime = Join-Path $PSScriptRoot 'runtime'
@@ -199,6 +205,7 @@ $script:chatResult = Join-Path $runtime 'kitty-chat-result.json'
 $script:chatState = Join-Path $runtime 'kitty-chat-state.json'
 $script:chatAnswer = ''
 $script:chatBusy = $false
+$script:chatProvider = 'codex'
 $script:lastBounds = $null
 $script:lastDockUpdate = [DateTime]::MinValue
 
@@ -210,6 +217,14 @@ function Show-KittyComposer([bool]$voice) {
         $chatStatus.Text = 'Speak now · review the words, then Send'
         [KittyDesktop]::VoiceTyping()
     }
+}
+function Switch-KittyProvider {
+    if ($script:chatBusy) { return }
+    $script:chatProvider = if ($script:chatProvider -eq 'codex') { 'claude' } else { 'codex' }
+    $name = if ($script:chatProvider -eq 'codex') { 'Codex' } else { 'Claude' }
+    $providerButton.Content = $name
+    $chatHeader.Text = "Message Kitty · $name"
+    $chatAnswerView.Text = "Kitty will reply from $name."
 }
 function Send-KittyMessage {
     if ($script:chatBusy) { return }
@@ -227,18 +242,20 @@ function Send-KittyMessage {
         return
     }
     if (Test-Path -LiteralPath $script:chatResult) { Remove-Item -LiteralPath $script:chatResult -Force }
-    $json = @{message = $message} | ConvertTo-Json -Compress
+    $json = @{message = $message; provider = $script:chatProvider} | ConvertTo-Json -Compress
     [IO.File]::WriteAllText($script:chatRequest, $json, [Text.UTF8Encoding]::new($false))
     $args = @('"' + $backend + '"', '"' + $script:chatRequest + '"',
               '"' + $script:chatResult + '"', '"' + $script:chatState + '"')
     Start-Process -FilePath $python -ArgumentList $args -WindowStyle Hidden
     $script:chatBusy = $true
     $sendButton.IsEnabled = $false
+    $providerButton.IsEnabled = $false
     $chatAnswerView.Text = ''
     $chatStatus.Text = 'Kitty is thinking…'
 }
 $writeButton.Add_Click({ Show-KittyComposer $false })
 $voiceButton.Add_Click({ Show-KittyComposer $true })
+$providerButton.Add_Click({ Switch-KittyProvider })
 $sendButton.Add_Click({ Send-KittyMessage })
 $chatText.Add_PreviewKeyDown({
     param($sender, $event)
@@ -331,10 +348,12 @@ $timer.Add_Tick({
                 $reply = Get-Content -LiteralPath $script:chatResult -Raw | ConvertFrom-Json
                 $script:chatBusy = $false
                 $sendButton.IsEnabled = $true
+                $providerButton.IsEnabled = $true
                 if ($reply.ok) {
                     $chatAnswerView.Text = [string]$reply.answer
                     $chatText.Clear()
-                    $chatStatus.Text = 'Kitty replied · type another message'
+                    $name = if ($reply.provider -eq 'claude') { 'Claude' } else { 'Codex' }
+                    $chatStatus.Text = "$name replied · type another message"
                 } else {
                     $chatAnswerView.Text = [string]$reply.error
                     $chatStatus.Text = 'Message failed · try again'
