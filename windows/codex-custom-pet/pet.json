@@ -1,0 +1,7 @@
+{
+  "id": "mr-kitty",
+  "displayName": "Mr. Kitty",
+  "description": "A real tuxedo cat animated as a small Codex companion.",
+  "spriteVersionNumber": 2,
+  "spritesheetPath": "spritesheet.webp"
+}

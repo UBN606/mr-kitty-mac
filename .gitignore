@@ -2,3 +2,5 @@ dist/
 .DS_Store
 *.app/
 *.zip
+windows/shared/runtime/
+__pycache__/

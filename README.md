@@ -5,6 +5,9 @@ AppKit source, Kitty's image frames, and a GitHub Actions build for a universal
 Mac app. The build checks both Apple Silicon and Intel slices, the app bundle,
 and an animation-state smoke test.
 
+The Windows custom pet pack and optional shared CoPet controls are in
+[windows/README.md](windows/README.md). Run only one visible Kitty at a time.
+
 ## Install a built release
 
 1. Download `Mr-Kitty-for-Mac.app.zip` from the build artifact and unzip it.
