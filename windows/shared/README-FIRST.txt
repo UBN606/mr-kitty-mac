@@ -18,6 +18,10 @@ in Codex Desktop must be hidden while this shared Kitty is running.
 7. If Kitty looks tiny, open CoPet Settings and move the pet Size slider to
    about 20-25. Right-click Kitty and choose Hide Messages if status bubbles
    crowd the cat. This keeps the attached text and voice dock available.
+8. The dock sits just outside CoPet's draggable pet window. If Kitty follows
+   the pointer after you release the mouse, switch to another app and back to
+   reset CoPet's drag state. If that does not help, exit CoPet normally from
+   its tray icon and reopen it.
 
 If the starter cannot find CoPet, read controller\runtime\start-error.txt.
 If the Claude chat says the CLI is missing, point MR_KITTY_CLAUDE_CLI to your

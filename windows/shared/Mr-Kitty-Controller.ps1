@@ -207,6 +207,35 @@ $chatHeader = $composer.FindName('ChatHeader')
 $chatStatus = $composer.FindName('ChatStatus')
 $chatAnswerView = $composer.FindName('ChatAnswer')
 $sendButton = $composer.FindName('SendButton')
+function Get-KittyPlacement([long[]]$bounds, [System.Drawing.Rectangle]$area) {
+    $gap = 4
+    $dockLeft = [Math]::Max($area.Left, [Math]::Min($area.Right - $dock.Width,
+        (($bounds[0] + $bounds[2] - $dock.Width) / 2)))
+    $belowPet = [double]$bounds[3] + $gap
+    $abovePet = [double]$bounds[1] - $dock.Height - $gap
+    if ($belowPet + $dock.Height -le $area.Bottom) {
+        $dockTop = $belowPet
+    } elseif ($abovePet -ge $area.Top) {
+        $dockTop = $abovePet
+    } else {
+        $dockTop = [Math]::Max($area.Top, [Math]::Min($area.Bottom - $dock.Height, $belowPet))
+    }
+    $rightOfPet = [double]$bounds[2] + 8
+    $leftOfPet = [double]$bounds[0] - $composer.Width - 8
+    if ($rightOfPet + $composer.Width -le $area.Right) {
+        $composerLeft = $rightOfPet
+    } elseif ($leftOfPet -ge $area.Left) {
+        $composerLeft = $leftOfPet
+    } else {
+        $composerLeft = [Math]::Max($area.Left, [Math]::Min($area.Right - $composer.Width, $rightOfPet))
+    }
+    $composerTop = [Math]::Max($area.Top,
+        [Math]::Min($area.Bottom - $composer.Height, [double]$bounds[1]))
+    return @{
+        DockLeft = $dockLeft; DockTop = $dockTop
+        ComposerLeft = $composerLeft; ComposerTop = $composerTop
+    }
+}
 if ($UiSmokeTest) {
     if (-not $writeButton -or -not $voiceButton -or -not $providerButton -or
         -not $chatHeader -or -not $chatText -or -not $sendButton -or -not $chatAnswerView) {
@@ -216,6 +245,14 @@ if ($UiSmokeTest) {
         $writeButton.Content -isnot [Windows.Controls.Canvas] -or
         $voiceButton.Content -isnot [Windows.Controls.Canvas]) {
         throw 'Kitty dock is oversized or its drawn icons did not load.'
+    }
+    $testArea = [System.Drawing.Rectangle]::new(0, 0, 1920, 1080)
+    $middle = Get-KittyPlacement ([long[]]@(200, 200, 400, 400, 0)) $testArea
+    $edge = Get-KittyPlacement ([long[]]@(1700, 900, 1880, 1070, 0)) $testArea
+    if ($middle.DockTop -lt 404 -or $middle.ComposerLeft -lt 408 -or
+        $edge.DockTop + $dock.Height -gt 896 -or
+        $edge.ComposerLeft + $composer.Width -gt 1692) {
+        throw 'Kitty controls overlap the pet hit area.'
     }
     Write-Output 'Kitty text, voice, provider, send, and reply controls loaded.'
     exit 0
@@ -300,10 +337,11 @@ function Update-KittyDock {
     if (-not $script:lastBounds) { return }
     $b = $script:lastBounds
     $screen = [System.Windows.Forms.Screen]::FromPoint([System.Drawing.Point]::new([int]$b[0], [int]$b[1])).WorkingArea
-    $dock.Left = [Math]::Max($screen.Left, [Math]::Min($screen.Right - $dock.Width, (($b[0] + $b[2] - $dock.Width) / 2)))
-    $dock.Top = [Math]::Max($screen.Top, [Math]::Min($screen.Bottom - $dock.Height, $b[3] - $dock.Height + 2))
-    $composer.Left = [Math]::Max($screen.Left, [Math]::Min($screen.Right - $composer.Width, $dock.Left + $dock.Width - $composer.Width))
-    $composer.Top = [Math]::Max($screen.Top, [Math]::Min($screen.Bottom - $composer.Height, $dock.Top - $composer.Height - 5))
+    $placement = Get-KittyPlacement $b $screen
+    $dock.Left = $placement.DockLeft
+    $dock.Top = $placement.DockTop
+    $composer.Left = $placement.ComposerLeft
+    $composer.Top = $placement.ComposerTop
     if (-not $dock.IsVisible) { $dock.Show() }
 }
 
