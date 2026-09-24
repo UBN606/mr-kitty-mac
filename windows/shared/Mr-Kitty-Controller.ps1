@@ -437,7 +437,7 @@ function Speak-KittyAnswer([string]$words) {
             return
         }
         Remove-Item -LiteralPath $script:voiceOutput, $script:voiceResult -Force -ErrorAction SilentlyContinue
-        $requestJson = @{text=$words;voice='af_heart'} | ConvertTo-Json -Compress
+        $requestJson = @{text=$words;voice='am_puck'} | ConvertTo-Json -Compress
         [IO.File]::WriteAllText($script:voiceRequest, $requestJson, [Text.UTF8Encoding]::new($false))
         $voiceArgs = @('"' + $script:voiceRenderer + '"',
             '"' + $script:voiceRequest + '"', '"' + $script:voiceOutput + '"',

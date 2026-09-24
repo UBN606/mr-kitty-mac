@@ -12,7 +12,7 @@ in Codex Desktop must be hidden while this shared Kitty is running.
    are separate from the tasks open in their desktop apps.
 5. With Kitty visible in CoPet, double-click
    controller\Start-Mr-Kitty-Shared.cmd. No portal is needed after setup.
-   For Kitty's softer local voice, run controller\Setup-Mr-Kitty-Voice.cmd
+   For Kitty's gentle male local voice, run controller\Setup-Mr-Kitty-Voice.cmd
    once. It installs an isolated voice runtime and downloads about 142 MB of
    free model files. It does not start Kitty speaking.
 6. In Kitty's little dock, choose the blue Codex or orange Claude button for

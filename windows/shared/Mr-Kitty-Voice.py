@@ -47,8 +47,8 @@ def main() -> int:
         if not text:
             raise ValueError("There is no reply to read.")
         text = text[:4000]
-        voice = str(request.get("voice", "af_heart"))
-        if voice not in {"af_heart", "af_sky"}:
+        voice = str(request.get("voice", "am_puck"))
+        if voice not in {"am_puck", "am_michael", "am_fenrir"}:
             raise ValueError("Unknown Kitty voice.")
         model = Kokoro(str(model_dir / "kokoro-v1.0.int8.onnx"),
                        str(model_dir / "voices-v1.0.bin"))
