@@ -122,19 +122,36 @@ $curlFrame = [Windows.Media.Imaging.BitmapImage]::new([Uri]::new($curlPath))
 $dockXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="144" Height="42" WindowStyle="None" AllowsTransparency="True"
+        Width="116" Height="30" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ShowInTaskbar="False" ShowActivated="False"
         Topmost="True" ResizeMode="NoResize" Title="Mr. Kitty chat controls">
-  <Border CornerRadius="21" Background="#D827303D" BorderBrush="#88FFFFFF"
-          BorderThickness="1" Padding="3">
-    <StackPanel Orientation="Horizontal">
-      <Button x:Name="WriteButton" Width="36" Height="34" FontSize="19" Content="✎"
-              Foreground="White" Background="Transparent" BorderThickness="0"
-              ToolTip="Write to Kitty" Cursor="Hand"/>
-      <Button x:Name="VoiceButton" Width="36" Height="34" FontSize="17" Content="🎙"
-              Foreground="White" Background="Transparent" BorderThickness="0"
-              ToolTip="Speak to Kitty using Windows voice typing" Cursor="Hand"/>
-      <Button x:Name="ProviderButton" Width="62" Height="34" FontSize="11" Content="Codex"
+  <Border CornerRadius="15" Background="#D827303D" BorderBrush="#88FFFFFF"
+          BorderThickness="1" Padding="2">
+    <Border.Effect>
+      <DropShadowEffect Color="#77000000" BlurRadius="9" ShadowDepth="2" Opacity="0.6"/>
+    </Border.Effect>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+      <Button x:Name="WriteButton" Width="30" Height="24" Padding="0"
+              Background="Transparent" BorderThickness="0"
+              ToolTip="Write to Kitty" Cursor="Hand">
+        <Canvas Width="18" Height="18">
+          <Path Data="M 2,15 L 3,18 L 6,17 L 16,7 L 13,4 Z"
+                Fill="#FFF3F8FA"/>
+          <Path Data="M 11.5,5.5 L 14.5,8.5" Stroke="#FF26303B" StrokeThickness="1"/>
+        </Canvas>
+      </Button>
+      <Button x:Name="VoiceButton" Width="30" Height="24" Padding="0"
+              Background="Transparent" BorderThickness="0"
+              ToolTip="Speak to Kitty using Windows voice typing" Cursor="Hand">
+        <Canvas Width="18" Height="18">
+          <Border Width="6" Height="10" CornerRadius="3" BorderBrush="#FFF3F8FA"
+                  BorderThickness="1.6" Canvas.Left="6" Canvas.Top="1"/>
+          <Path Data="M 3,9 C 3,15 15,15 15,9 M 9,14 L 9,18 M 6,18 L 12,18"
+                Stroke="#FFF3F8FA" StrokeThickness="1.6" StrokeStartLineCap="Round"
+                StrokeEndLineCap="Round"/>
+        </Canvas>
+      </Button>
+      <Button x:Name="ProviderButton" Width="52" Height="24" FontSize="10" Content="Codex"
               Foreground="White" Background="Transparent" BorderThickness="0"
               ToolTip="Switch Kitty chat between Codex and Claude" Cursor="Hand"/>
     </StackPanel>
@@ -156,7 +173,7 @@ $composerXaml = @'
         <RowDefinition Height="98"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
-      <TextBlock x:Name="ChatHeader" Text="Message Kitty · Codex" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+      <TextBlock x:Name="ChatHeader" Text="Message Kitty - Codex" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
       <TextBox x:Name="ChatText" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True"
                VerticalScrollBarVisibility="Auto" Padding="8" FontSize="13"
                Foreground="White" Background="#553B4757" BorderThickness="0"/>
@@ -165,7 +182,7 @@ $composerXaml = @'
                    TextWrapping="Wrap" Foreground="#FFE4EDF2" FontSize="12"/>
       </ScrollViewer>
       <DockPanel Grid.Row="3" Margin="0,9,0,0">
-        <TextBlock x:Name="ChatStatus" Text="Enter to send · Shift+Enter for a new line"
+        <TextBlock x:Name="ChatStatus" Text="Enter to send | Shift+Enter for a new line"
                    Foreground="#C9D5DF" FontSize="10" VerticalAlignment="Center"/>
         <Button x:Name="SendButton" Content="Send" Width="56" Height="28"
                 Foreground="White" Background="#FF476B77" BorderThickness="0"
@@ -195,6 +212,11 @@ if ($UiSmokeTest) {
         -not $chatHeader -or -not $chatText -or -not $sendButton -or -not $chatAnswerView) {
         throw 'Kitty chat controls did not load.'
     }
+    if ($dock.Width -gt 120 -or $dock.Height -gt 32 -or
+        $writeButton.Content -isnot [Windows.Controls.Canvas] -or
+        $voiceButton.Content -isnot [Windows.Controls.Canvas]) {
+        throw 'Kitty dock is oversized or its drawn icons did not load.'
+    }
     Write-Output 'Kitty text, voice, provider, send, and reply controls loaded.'
     exit 0
 }
@@ -214,7 +236,7 @@ function Show-KittyComposer([bool]$voice) {
     $composer.Activate() | Out-Null
     $chatText.Focus() | Out-Null
     if ($voice) {
-        $chatStatus.Text = 'Speak now · review the words, then Send'
+        $chatStatus.Text = 'Speak now, review the words, then Send'
         [KittyDesktop]::VoiceTyping()
     }
 }
@@ -223,7 +245,7 @@ function Switch-KittyProvider {
     $script:chatProvider = if ($script:chatProvider -eq 'codex') { 'claude' } else { 'codex' }
     $name = if ($script:chatProvider -eq 'codex') { 'Codex' } else { 'Claude' }
     $providerButton.Content = $name
-    $chatHeader.Text = "Message Kitty · $name"
+    $chatHeader.Text = "Message Kitty - $name"
     $chatAnswerView.Text = "Kitty will reply from $name."
 }
 function Send-KittyMessage {
@@ -251,7 +273,7 @@ function Send-KittyMessage {
     $sendButton.IsEnabled = $false
     $providerButton.IsEnabled = $false
     $chatAnswerView.Text = ''
-    $chatStatus.Text = 'Kitty is thinking…'
+    $chatStatus.Text = 'Kitty is thinking...'
 }
 $writeButton.Add_Click({ Show-KittyComposer $false })
 $voiceButton.Add_Click({ Show-KittyComposer $true })
@@ -278,7 +300,7 @@ function Update-KittyDock {
     if (-not $script:lastBounds) { return }
     $b = $script:lastBounds
     $screen = [System.Windows.Forms.Screen]::FromPoint([System.Drawing.Point]::new([int]$b[0], [int]$b[1])).WorkingArea
-    $dock.Left = [Math]::Max($screen.Left, [Math]::Min($screen.Right - $dock.Width, $b[2] - $dock.Width - 10))
+    $dock.Left = [Math]::Max($screen.Left, [Math]::Min($screen.Right - $dock.Width, (($b[0] + $b[2] - $dock.Width) / 2)))
     $dock.Top = [Math]::Max($screen.Top, [Math]::Min($screen.Bottom - $dock.Height, $b[3] - $dock.Height + 2))
     $composer.Left = [Math]::Max($screen.Left, [Math]::Min($screen.Right - $composer.Width, $dock.Left + $dock.Width - $composer.Width))
     $composer.Top = [Math]::Max($screen.Top, [Math]::Min($screen.Bottom - $composer.Height, $dock.Top - $composer.Height - 5))
@@ -353,10 +375,10 @@ $timer.Add_Tick({
                     $chatAnswerView.Text = [string]$reply.answer
                     $chatText.Clear()
                     $name = if ($reply.provider -eq 'claude') { 'Claude' } else { 'Codex' }
-                    $chatStatus.Text = "$name replied · type another message"
+                    $chatStatus.Text = "$name replied - type another message"
                 } else {
                     $chatAnswerView.Text = [string]$reply.error
-                    $chatStatus.Text = 'Message failed · try again'
+                    $chatStatus.Text = 'Message failed - try again'
                 }
             }
         }

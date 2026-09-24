@@ -15,11 +15,15 @@ in Codex Desktop must be hidden while this shared Kitty is running.
 6. In Kitty's little dock, click Codex/Claude to switch who answers. Click
    the pencil to type. Click the microphone for Windows voice typing (Win+H),
    review the words, and send. Alt-click Kitty for a trick and treat.
+7. If Kitty looks tiny, open CoPet Settings and move the pet Size slider to
+   about 20-25. Right-click Kitty and choose Hide Messages if status bubbles
+   crowd the cat. This keeps the attached text and voice dock available.
 
 If the starter cannot find CoPet, read controller\runtime\start-error.txt.
-If the Claude chat says the CLI is missing, install Claude Code CLI from
-https://code.claude.com/docs/en/setup or set MR_KITTY_CLAUDE_CLI to its path.
+If the Claude chat says the CLI is missing, point MR_KITTY_CLAUDE_CLI to your
+existing Claude Code executable, or use the installation instructions at
+https://code.claude.com/docs/en/setup.
 Claude activity through CoPet can still work even when the CLI chat is absent.
 
-This pack has passed offline code and control-loading checks. It has not
-sent a live Claude message on this Windows PC because Claude CLI is absent.
+This pack has passed offline code and control-loading checks. The package
+checks did not send a live Claude message.
