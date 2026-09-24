@@ -40,7 +40,7 @@ jobs:
       - name: Load Windows controller controls
         shell: pwsh
         run: |
-          foreach ($path in @('windows/shared/Mr-Kitty-Controller.ps1', 'windows/shared/Start-Mr-Kitty-Shared.ps1')) {
+          foreach ($path in @('windows/shared/Mr-Kitty-Controller.ps1', 'windows/shared/Start-Mr-Kitty-Shared.ps1', 'windows/shared/Setup-Mr-Kitty-Voice.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path, [ref]$tokens, [ref]$errors) | Out-Null
@@ -48,6 +48,9 @@ jobs:
           }
           & powershell.exe -NoProfile -Sta -ExecutionPolicy Bypass -File 'windows/shared/Mr-Kitty-Controller.ps1' -UiSmokeTest
           if ($LASTEXITCODE -ne 0) { throw 'Kitty controls did not load' }
+          & powershell.exe -NoProfile -Sta -ExecutionPolicy Bypass -File 'windows/shared/Mr-Kitty-Controller.ps1' -RuntimeSmokeTest
+          if ($LASTEXITCODE -ne 0) { throw 'Kitty controller could not start and stop cleanly' }
+          if (Test-Path 'windows/shared/runtime/desktop-reply-capture.flag') { throw 'Kitty reply capture flag was left behind' }
       - name: Package one shared Windows Kitty
         run: python windows/build-shared-package.py
       - uses: actions/upload-artifact@v4

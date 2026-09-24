@@ -15,7 +15,7 @@ movement, task activity, and its built-in text and voice controls.
 ## Shared CoPet pet for Codex and Claude Code
 
 The `shared` folder holds the Windows controller that puts a small glass
-pencil, microphone, and Codex/Claude switch next to one CoPet Kitty. CoPet's
+pencil, microphone, and separate colored Codex/Claude buttons next to one CoPet Kitty. CoPet's
 Claude Code integration handles Claude Code activity. Kitty's watcher sends
 new Codex Desktop task activity to the same CoPet cat. CoPet can also handle
 Codex CLI activity through its own integration.
@@ -38,10 +38,14 @@ Claude activity reactions can still work through CoPet's hooks without it.
 3. With CoPet showing Kitty, run `shared/Start-Mr-Kitty-Shared.cmd`. CoPet can
    also be launched by this script if `CoPet.exe` is on `PATH` or the
    `MR_KITTY_COPET_EXE` environment variable points to it.
-4. Click **Codex/Claude** in Kitty's dock to choose who answers. Click the
-   pencil for a small message card. Click the microphone to start Windows
-   voice typing, review the words, then send. Alt-click Kitty for a roll,
-   rest, and treat.
+4. Click the blue **Codex** or orange **Claude** button to choose who answers.
+   Click the pencil to type, or the microphone to speak into Kitty's separate
+   chat. Alt-click Kitty for a roll, rest, and treat.
+5. For a softer voice, run `shared/Setup-Mr-Kitty-Voice.cmd` once. It installs
+   the free local Kokoro model in an isolated folder. Kitty stays silent until
+   you press **Hear** on his chat card. To hear a recent Codex Desktop or
+   Claude Code reply, click **Desktop**, choose the source, then press Hear.
+   **Stop** or closing the card silences playback.
 
 The watcher reads only new local Codex Desktop session entries. Short activity
 summaries may appear on the desktop where others can see them. Its local
@@ -54,8 +58,6 @@ activity. Claude Desktop's ordinary Chat tab does not expose these agent hooks;
 the Mac-style Quick Entry button is not available on Windows. The in-pet
 Claude chat above uses its own Claude Code CLI session.
 
-The shared controller has been adapted to use paths on the current Windows
-machine. Its portable copy passed offline backend tests and a WPF control
-loading check; Claude CLI is not installed on this PC, so a live Claude answer
-has not yet been tested. The original controller was used locally, but this
-copy has not been relaunched on another PC.
+The voice model is downloaded during setup rather than stored in this repo.
+The package and UI have offline checks; mic accuracy, desktop playback and a
+live Claude chat still require a normal desktop check after installation.
