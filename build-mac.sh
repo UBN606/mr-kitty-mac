@@ -22,6 +22,6 @@ codesign --force --deep --sign - "$app"
 
 /usr/bin/plutil -lint "$app/Contents/Info.plist"
 test "$(find "$app/Contents/Resources/Assets" -name '*.png' -type f | wc -l | tr -d ' ')" = 22
-xcrun lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/MrKitty"
+xcrun lipo "$app/Contents/MacOS/MrKitty" -verify_arch arm64 x86_64
 codesign --verify --deep --strict "$app"
 echo "Built and statically verified: $app"
