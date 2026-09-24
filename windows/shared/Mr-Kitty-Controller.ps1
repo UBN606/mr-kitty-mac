@@ -130,7 +130,7 @@ $dockXaml = @'
     <Border.Effect>
       <DropShadowEffect Color="#77000000" BlurRadius="9" ShadowDepth="2" Opacity="0.6"/>
     </Border.Effect>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+    <StackPanel x:Name="DockStack" Orientation="Horizontal" VerticalAlignment="Center">
       <Button x:Name="WriteButton" Width="30" Height="24" Padding="0"
               Background="Transparent" BorderThickness="0"
               ToolTip="Write to Kitty" Cursor="Hand">
@@ -174,6 +174,10 @@ $composerXaml = @'
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
       <TextBlock x:Name="ChatHeader" Text="Message Kitty - Codex" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+      <Button x:Name="CloseButton" Grid.Row="0" Content="X" Width="22" Height="21"
+              HorizontalAlignment="Right" VerticalAlignment="Top" FontSize="11"
+              Foreground="White" Background="#554B5665" BorderThickness="0"
+              ToolTip="Close Kitty chat (Esc)" Cursor="Hand"/>
       <TextBox x:Name="ChatText" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True"
                VerticalScrollBarVisibility="Auto" Padding="8" FontSize="13"
                Foreground="White" Background="#553B4757" BorderThickness="0"/>
@@ -202,15 +206,34 @@ $composer = New-KittyWindow $composerXaml
 $writeButton = $dock.FindName('WriteButton')
 $voiceButton = $dock.FindName('VoiceButton')
 $providerButton = $dock.FindName('ProviderButton')
+$dockStack = $dock.FindName('DockStack')
 $chatText = $composer.FindName('ChatText')
 $chatHeader = $composer.FindName('ChatHeader')
 $chatStatus = $composer.FindName('ChatStatus')
 $chatAnswerView = $composer.FindName('ChatAnswer')
 $sendButton = $composer.FindName('SendButton')
+$closeButton = $composer.FindName('CloseButton')
 function Get-KittyPlacement([long[]]$bounds, [System.Drawing.Rectangle]$area) {
     $gap = 4
+    $petCenter = ($bounds[0] + $bounds[2]) / 2.0
+    $horizontalLeft = [Math]::Max($area.Left, [Math]::Min($area.Right - 116,
+        ($petCenter - 58)))
+    $narrow = [Math]::Abs($horizontalLeft - ($petCenter - 58)) -gt 20
+    $dock.Width = if ($narrow) { 34 } else { 116 }
+    $dock.Height = if ($narrow) { 80 } else { 30 }
+    $dockStack.Orientation = if ($narrow) {
+        [Windows.Controls.Orientation]::Vertical
+    } else {
+        [Windows.Controls.Orientation]::Horizontal
+    }
+    $providerButton.Width = if ($narrow) { 30 } else { 52 }
+    $providerButton.Content = if ($narrow) {
+        if ($script:chatProvider -eq 'claude') { 'Cl' } else { 'Cx' }
+    } else {
+        if ($script:chatProvider -eq 'claude') { 'Claude' } else { 'Codex' }
+    }
     $dockLeft = [Math]::Max($area.Left, [Math]::Min($area.Right - $dock.Width,
-        (($bounds[0] + $bounds[2] - $dock.Width) / 2)))
+        ($petCenter - $dock.Width / 2)))
     $belowPet = [double]$bounds[3] + $gap
     $abovePet = [double]$bounds[1] - $dock.Height - $gap
     if ($belowPet + $dock.Height -le $area.Bottom) {
@@ -229,8 +252,16 @@ function Get-KittyPlacement([long[]]$bounds, [System.Drawing.Rectangle]$area) {
     } else {
         $composerLeft = [Math]::Max($area.Left, [Math]::Min($area.Right - $composer.Width, $rightOfPet))
     }
-    $composerTop = [Math]::Max($area.Top,
-        [Math]::Min($area.Bottom - $composer.Height, [double]$bounds[1]))
+    $aboveDock = $dockTop - $composer.Height - 8
+    $belowDock = $dockTop + $dock.Height + 8
+    if ($aboveDock -ge $area.Top) {
+        $composerTop = $aboveDock
+    } elseif ($belowDock + $composer.Height -le $area.Bottom) {
+        $composerTop = $belowDock
+    } else {
+        $composerTop = [Math]::Max($area.Top,
+            [Math]::Min($area.Bottom - $composer.Height, [double]$bounds[1]))
+    }
     return @{
         DockLeft = $dockLeft; DockTop = $dockTop
         ComposerLeft = $composerLeft; ComposerTop = $composerTop
@@ -238,7 +269,8 @@ function Get-KittyPlacement([long[]]$bounds, [System.Drawing.Rectangle]$area) {
 }
 if ($UiSmokeTest) {
     if (-not $writeButton -or -not $voiceButton -or -not $providerButton -or
-        -not $chatHeader -or -not $chatText -or -not $sendButton -or -not $chatAnswerView) {
+        -not $chatHeader -or -not $chatText -or -not $sendButton -or
+        -not $closeButton -or -not $chatAnswerView) {
         throw 'Kitty chat controls did not load.'
     }
     if ($dock.Width -gt 120 -or $dock.Height -gt 32 -or
@@ -251,8 +283,18 @@ if ($UiSmokeTest) {
     $edge = Get-KittyPlacement ([long[]]@(1700, 900, 1880, 1070, 0)) $testArea
     if ($middle.DockTop -lt 404 -or $middle.ComposerLeft -lt 408 -or
         $edge.DockTop + $dock.Height -gt 896 -or
-        $edge.ComposerLeft + $composer.Width -gt 1692) {
+        $edge.ComposerLeft + $composer.Width -gt 1692 -or
+        $middle.ComposerTop -le $middle.DockTop -and
+        $middle.ComposerTop + $composer.Height -gt $middle.DockTop -or
+        $edge.ComposerTop -le $edge.DockTop -and
+        $edge.ComposerTop + $composer.Height -gt $edge.DockTop) {
         throw 'Kitty controls overlap the pet hit area.'
+    }
+    $taskbarEdge = Get-KittyPlacement ([long[]]@(1240, 20, 1380, 180, 0)) ([System.Drawing.Rectangle]::new(0, 0, 1312, 768))
+    if ($dock.Width -ne 34 -or
+        [Math]::Abs(($taskbarEdge.DockLeft + $dock.Width / 2) - 1310) -gt 20 -or
+        $taskbarEdge.ComposerTop -lt $taskbarEdge.DockTop + $dock.Height + 8) {
+        throw 'Kitty edge layout is not centered or the composer covers the dock.'
     }
     Write-Output 'Kitty text, voice, provider, send, and reply controls loaded.'
     exit 0
@@ -269,6 +311,7 @@ $script:lastBounds = $null
 $script:lastDockUpdate = [DateTime]::MinValue
 
 function Show-KittyComposer([bool]$voice) {
+    Update-KittyDock
     if (-not $composer.IsVisible) { $composer.Show() }
     $composer.Activate() | Out-Null
     $chatText.Focus() | Out-Null
@@ -281,7 +324,9 @@ function Switch-KittyProvider {
     if ($script:chatBusy) { return }
     $script:chatProvider = if ($script:chatProvider -eq 'codex') { 'claude' } else { 'codex' }
     $name = if ($script:chatProvider -eq 'codex') { 'Codex' } else { 'Claude' }
-    $providerButton.Content = $name
+    $providerButton.Content = if ($dock.Width -lt 50) {
+        if ($script:chatProvider -eq 'codex') { 'Cx' } else { 'Cl' }
+    } else { $name }
     $chatHeader.Text = "Message Kitty - $name"
     $chatAnswerView.Text = "Kitty will reply from $name."
 }
@@ -312,10 +357,21 @@ function Send-KittyMessage {
     $chatAnswerView.Text = ''
     $chatStatus.Text = 'Kitty is thinking...'
 }
-$writeButton.Add_Click({ Show-KittyComposer $false })
+$writeButton.Add_Click({
+    if ($composer.IsVisible) { $composer.Hide() }
+    else { Show-KittyComposer $false }
+})
 $voiceButton.Add_Click({ Show-KittyComposer $true })
 $providerButton.Add_Click({ Switch-KittyProvider })
 $sendButton.Add_Click({ Send-KittyMessage })
+$closeButton.Add_Click({ $composer.Hide() })
+$composer.Add_PreviewKeyDown({
+    param($sender, $event)
+    if ($event.Key -eq [Windows.Input.Key]::Escape) {
+        $event.Handled = $true
+        $composer.Hide()
+    }
+})
 $chatText.Add_PreviewKeyDown({
     param($sender, $event)
     if ($event.Key -eq [Windows.Input.Key]::Enter -and

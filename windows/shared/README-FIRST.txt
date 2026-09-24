@@ -22,6 +22,10 @@ in Codex Desktop must be hidden while this shared Kitty is running.
    the pointer after you release the mouse, switch to another app and back to
    reset CoPet's drag state. If that does not help, exit CoPet normally from
    its tray icon and reopen it.
+9. When Kitty is next to a screen edge or taskbar, the dock becomes a slim
+   vertical strip. Cx means Codex and Cl means Claude. The pencil opens or
+   closes chat; the X or Esc closes chat too. The chat panel stays clear of
+   Kitty's controls so you can choose another button.
 
 If the starter cannot find CoPet, read controller\runtime\start-error.txt.
 If the Claude chat says the CLI is missing, point MR_KITTY_CLAUDE_CLI to your
