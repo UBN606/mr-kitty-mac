@@ -11,7 +11,7 @@ cp "$source_dir/Info.plist" "$app/Contents/Info.plist"
 cp -R "$source_dir/Assets" "$app/Contents/Resources/Assets"
 
 for arch in arm64 x86_64; do
-  xcrun swiftc -O -sdk "$sdk" -target "${arch}-apple-macos14.0" \
+  xcrun swiftc -parse-as-library -O -sdk "$sdk" -target "${arch}-apple-macos14.0" \
     "$source_dir/KittyApp.swift" -o "$output_dir/MrKitty-$arch"
 done
 xcrun lipo -create -output "$app/Contents/MacOS/MrKitty" \
