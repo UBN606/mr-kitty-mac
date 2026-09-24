@@ -1,0 +1,28 @@
+MR. KITTY FOR YOUR MAC
+
+INSTALL
+1. Double-click the ZIP and drag Mr Kitty.app into Applications.
+2. Open Mr Kitty from Applications. If macOS blocks it, follow Apple's
+   Open Anyway directions: https://support.apple.com/en-us/102445
+3. If macOS asks about Accessibility, allow Mr Kitty. This lets his chat
+   buttons open ChatGPT or Claude's small chat window.
+4. If you already have Mr. Kitty in CoPet, hide that copy so you see one cat.
+
+USE
+- Drag Kitty to move him. Right-click Kitty to quit.
+- Pencil: open a small text chat with the selected app.
+- Microphone: open voice input. With ChatGPT, tap Voice in the Chat Bar.
+- Star or Option-click Kitty: he rolls over, then gets a treat.
+- G/C: switch between ChatGPT and Claude. Both apps must be installed to use
+  their respective chat buttons. ChatGPT and Claude keep their own chats.
+
+For Claude, enable Quick Entry in Claude Desktop > Settings > General >
+Desktop App. Its voice shortcut uses Caps Lock on macOS 14 or later.
+
+If anything is confusing, copy this into ChatGPT or Claude:
+
+"Please help me install or use my Mr. Kitty Mac desktop pet, one step at a
+time. Ask what I see and for the exact error or a screenshot. Use the steps
+above and official Apple, ChatGPT, or Claude guidance. Explain any Terminal
+command or security-setting change before suggesting it. If you cannot tell
+what failed, ask for the missing information instead of guessing."

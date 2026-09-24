@@ -1,0 +1,6 @@
+*.sh text eol=lf
+*.command text eol=lf
+*.swift text eol=lf
+*.yml text eol=lf
+*.plist text eol=lf
+*.png binary

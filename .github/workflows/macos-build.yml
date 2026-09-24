@@ -1,0 +1,28 @@
+name: Build Mr Kitty for macOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile universal app and verify bundle
+        run: bash build-mac.sh "$RUNNER_TEMP/kitty-dist"
+      - name: Run Mac app smoke test
+        run: '"$RUNNER_TEMP/kitty-dist/Mr Kitty.app/Contents/MacOS/MrKitty" --self-test'
+      - name: Package Mac app
+        run: |
+          mkdir -p "$RUNNER_TEMP/kitty-delivery"
+          cp -R "$RUNNER_TEMP/kitty-dist/Mr Kitty.app" "$RUNNER_TEMP/kitty-delivery/"
+          cp MOM-READ-ME-FIRST.txt "$RUNNER_TEMP/kitty-delivery/"
+          ditto -c -k "$RUNNER_TEMP/kitty-delivery" "$RUNNER_TEMP/Mr-Kitty-for-Mac.app.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mr-Kitty-for-Mac
+          path: ${{ runner.temp }}/Mr-Kitty-for-Mac.app.zip
+          if-no-files-found: error
