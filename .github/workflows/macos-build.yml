@@ -48,6 +48,8 @@ jobs:
           }
           & powershell.exe -NoProfile -Sta -ExecutionPolicy Bypass -File 'windows/shared/Mr-Kitty-Controller.ps1' -UiSmokeTest
           if ($LASTEXITCODE -ne 0) { throw 'Kitty controls did not load' }
+          & powershell.exe -NoProfile -Sta -ExecutionPolicy Bypass -File 'windows/shared/Mr-Kitty-Controller.ps1' -ReplySmokeTest
+          if ($LASTEXITCODE -ne 0) { throw 'Kitty reply card did not open' }
           & powershell.exe -NoProfile -Sta -ExecutionPolicy Bypass -File 'windows/shared/Mr-Kitty-Controller.ps1' -RuntimeSmokeTest
           if ($LASTEXITCODE -ne 0) { throw 'Kitty controller could not start and stop cleanly' }
           if (Test-Path 'windows/shared/runtime/desktop-reply-capture.flag') { throw 'Kitty reply capture flag was left behind' }

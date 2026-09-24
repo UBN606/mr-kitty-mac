@@ -46,6 +46,11 @@ Claude activity reactions can still work through CoPet's hooks without it.
    you press **Hear** on his chat card. To hear a recent Codex Desktop or
    Claude Code reply, click **Desktop**, choose the source, then press Hear.
    **Stop** or closing the card silences playback.
+6. When a new Codex Desktop or Claude Code reply arrives, click the small
+   colored "replied - read" notice next to Kitty. The full reply opens in a
+   larger scrolling card. **Open app** brings the running app forward to reply
+   in that task. Kitty's **Send** continues a separate CLI chat. CoPet's own
+   small status bubble can be hidden from Kitty's right-click menu.
 
 The watcher reads only new local Codex Desktop session entries. Short activity
 summaries may appear on the desktop where others can see them. Its local

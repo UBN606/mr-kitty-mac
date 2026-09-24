@@ -37,6 +37,15 @@ in Codex Desktop must be hidden while this shared Kitty is running.
     Desktop, choose the available source, then press Hear. Hear also reads
     Kitty's own visible chat reply. Press Stop or close the card to silence it.
     Ordinary Claude browser and Claude Desktop Chat replies are not captured.
+11. A small blue or orange "replied - read" notice appears beside Kitty when
+    Codex Desktop or Claude Code finishes a new reply. Click it to read the
+    complete reply in a larger scrolling card. Open app brings the running
+    Codex or Claude app forward so you can respond in the original task.
+    Kitty's Send box starts or continues a separate Kitty CLI chat; it does
+    not respond in the original desktop task. The notice disappears after
+    25 seconds; Desktop in the card still offers the latest reply from each.
+    CoPet's own tiny status bubble is only an activity summary. You can hide
+    it with right-click Kitty > Hide Messages if it crowds the new notice.
 
 If the starter cannot find CoPet, read controller\runtime\start-error.txt.
 If the Claude chat says the CLI is missing, point MR_KITTY_CLAUDE_CLI to your

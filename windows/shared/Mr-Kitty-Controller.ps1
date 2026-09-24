@@ -1,4 +1,5 @@
-param([switch]$SmokeTest, [switch]$UiSmokeTest, [switch]$RuntimeSmokeTest, [switch]$Demo)
+param([switch]$SmokeTest, [switch]$UiSmokeTest, [switch]$RuntimeSmokeTest,
+      [switch]$ReplySmokeTest, [switch]$Demo)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
@@ -16,6 +17,7 @@ public static class KittyDesktop {
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
     [DllImport("user32.dll")] private static extern bool ShowWindowAsync(IntPtr hwnd, int command);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
     public static bool LeftDown() { return (GetAsyncKeyState(0x01) & 0x8000) != 0; }
@@ -47,6 +49,26 @@ public static class KittyDesktop {
     }
     public static void Hide(long handle) { if (handle != 0) ShowWindowAsync(new IntPtr(handle), 0); }
     public static void Reveal(long handle) { if (handle != 0) ShowWindowAsync(new IntPtr(handle), 4); }
+    public static bool Focus(int processId) {
+        IntPtr selected = IntPtr.Zero;
+        int bestArea = 0;
+        EnumWindows((hwnd, data) => {
+            uint owner;
+            GetWindowThreadProcessId(hwnd, out owner);
+            if (owner != processId || !IsWindowVisible(hwnd)) return true;
+            Rect rect;
+            if (!GetWindowRect(hwnd, out rect)) return true;
+            int width = rect.Right - rect.Left;
+            int height = rect.Bottom - rect.Top;
+            if (width < 400 || height < 250) return true;
+            int area = width * height;
+            if (area > bestArea) { bestArea = area; selected = hwnd; }
+            return true;
+        }, IntPtr.Zero);
+        if (selected == IntPtr.Zero) return false;
+        ShowWindowAsync(selected, 9);
+        return SetForegroundWindow(selected);
+    }
 }
 '@
 
@@ -71,7 +93,7 @@ if ($SmokeTest) {
 }
 
 $createdNew = $false
-if (-not $UiSmokeTest -and -not $RuntimeSmokeTest) {
+if (-not $UiSmokeTest -and -not $RuntimeSmokeTest -and -not $ReplySmokeTest) {
     $mutex = New-Object System.Threading.Mutex($true, 'Local\MrKittyController', [ref]$createdNew)
     if (-not $createdNew) { $mutex.Dispose(); exit 0 }
 }
@@ -170,8 +192,8 @@ $composerXaml = @'
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="22"/>
+        <RowDefinition Height="100"/>
         <RowDefinition Height="*"/>
-        <RowDefinition Height="98"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
       <TextBlock x:Name="ChatHeader" Text="Message Kitty - Codex" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
@@ -195,14 +217,40 @@ $composerXaml = @'
                    TextWrapping="Wrap" Foreground="#FFE4EDF2" FontSize="12"/>
       </ScrollViewer>
       <DockPanel Grid.Row="3" Margin="0,9,0,0">
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+          <Button x:Name="OpenAppButton" Content="Open app" Width="67" Height="28"
+                  Visibility="Collapsed" Margin="0,0,5,0" Foreground="White"
+                  Background="#554B5665" BorderThickness="0" Cursor="Hand"/>
+          <Button x:Name="SendButton" Content="Send" Width="56" Height="28"
+                  Foreground="White" Background="#FF476B77" BorderThickness="0"
+                  Cursor="Hand"/>
+        </StackPanel>
         <TextBlock x:Name="ChatStatus" Text="Enter to send | Shift+Enter for a new line"
-                   Foreground="#C9D5DF" FontSize="10" VerticalAlignment="Center"/>
-        <Button x:Name="SendButton" Content="Send" Width="56" Height="28"
-                Foreground="White" Background="#FF476B77" BorderThickness="0"
-                HorizontalAlignment="Right" DockPanel.Dock="Right" Cursor="Hand"/>
+                   TextTrimming="CharacterEllipsis" Foreground="#C9D5DF" FontSize="10"
+                   VerticalAlignment="Center"/>
       </DockPanel>
     </Grid>
   </Border>
+</Window>
+'@
+$noticeXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="158" Height="30" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ShowInTaskbar="False" ShowActivated="False"
+        Topmost="True" ResizeMode="NoResize" Title="Mr. Kitty reply">
+  <Button x:Name="NoticeButton" Background="#E6253342" BorderBrush="#99FFFFFF"
+          BorderThickness="1" Foreground="White" FontSize="11" Cursor="Hand"
+          ToolTip="Click to read the full reply in Kitty">
+    <Button.Template>
+      <ControlTemplate TargetType="Button">
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="14">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Button.Template>
+  </Button>
 </Window>
 '@
 function New-KittyWindow([string]$markup) {
@@ -212,6 +260,8 @@ function New-KittyWindow([string]$markup) {
 }
 $dock = New-KittyWindow $dockXaml
 $composer = New-KittyWindow $composerXaml
+$notice = New-KittyWindow $noticeXaml
+$noticeButton = $notice.FindName('NoticeButton')
 $writeButton = $dock.FindName('WriteButton')
 $voiceButton = $dock.FindName('VoiceButton')
 $codexButton = $dock.FindName('CodexButton')
@@ -223,6 +273,7 @@ $chatHeader = $composer.FindName('ChatHeader')
 $chatStatus = $composer.FindName('ChatStatus')
 $chatAnswerView = $composer.FindName('ChatAnswer')
 $sendButton = $composer.FindName('SendButton')
+$openAppButton = $composer.FindName('OpenAppButton')
 $desktopButton = $composer.FindName('DesktopButton')
 $hearButton = $composer.FindName('HearButton')
 $closeButton = $composer.FindName('CloseButton')
@@ -294,6 +345,7 @@ if ($UiSmokeTest) {
         -not $claudeButton -or
         -not $chatHeader -or -not $chatText -or -not $sendButton -or
         -not $closeButton -or -not $hearButton -or -not $desktopButton -or
+        -not $openAppButton -or -not $noticeButton -or
         -not $chatAnswerView) {
         throw 'Kitty chat controls did not load.'
     }
@@ -329,6 +381,9 @@ $runtime = Join-Path $PSScriptRoot 'runtime'
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
 $script:speechInbox = Join-Path $runtime 'speech-inbox'
 $script:desktopReplies = @{}
+$script:noticeSource = ''
+$script:selectedDesktopSource = ''
+$script:noticeUntil = [DateTime]::MinValue
 New-Item -ItemType Directory -Force -Path $script:speechInbox | Out-Null
 Get-ChildItem -LiteralPath $script:speechInbox -Filter '*.json' -File -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction SilentlyContinue
@@ -373,6 +428,10 @@ function Set-KittyProvider([string]$provider) {
     if ($script:chatBusy -or $provider -notin @('codex', 'claude')) { return }
     Stop-KittySpeaking
     $script:chatProvider = $provider
+    $script:selectedDesktopSource = ''
+    $openAppButton.Visibility = [Windows.Visibility]::Collapsed
+    $composer.Width = 314
+    $composer.Height = 280
     $codexButton.Background = if ($provider -eq 'codex') {
         $script:codexBrush
     } else { $script:inactiveBrush }
@@ -387,10 +446,39 @@ function Set-KittyProvider([string]$provider) {
 }
 
 function Show-KittyComposer {
+    if ($ReplySmokeTest) { return }
     Update-KittyDock
     if (-not $composer.IsVisible) { $composer.Show() }
     $composer.Activate() | Out-Null
     $chatText.Focus() | Out-Null
+}
+function Show-DesktopReply([string]$source) {
+    if (-not $script:desktopReplies.ContainsKey($source)) { return }
+    Stop-KittySpeaking
+    Set-KittyProvider $source
+    $script:selectedDesktopSource = $source
+    $script:noticeSource = ''
+    $notice.Hide()
+    $composer.Width = 450
+    $composer.Height = 440
+    $name = if ($source -eq 'codex') { 'Codex Desktop' } else { 'Claude Code' }
+    $chatHeader.Text = "$name reply"
+    $chatAnswerView.Text = [string]$script:desktopReplies[$source]
+    $script:hasSpeakableReply = $true
+    $openAppButton.Visibility = [Windows.Visibility]::Visible
+    $chatStatus.Text = 'Open app for original task. Send starts a separate Kitty chat.'
+    Show-KittyComposer
+}
+function Open-KittySourceApp([string]$source) {
+    $appName = if ($source -eq 'codex') { 'ChatGPT' } else { 'claude' }
+    $pathHint = if ($source -eq 'codex') { 'OpenAI.Codex' } else { 'WindowsApps\Claude_' }
+    foreach ($process in @(Get-Process -Name $appName -ErrorAction SilentlyContinue)) {
+        try {
+            if ($process.Path -notlike "*$pathHint*") { continue }
+            if ([KittyDesktop]::Focus($process.Id)) { return $true }
+        } catch {}
+    }
+    return $false
 }
 function Clear-KittySpeech {
     foreach ($id in @($script:speechRecognizedId, $script:speechCompletedId)) {
@@ -491,7 +579,16 @@ function Read-KittyInbox {
             if ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [double]$speechRecord.at -gt 120) { continue }
             if ($speechRecord.source -notin @('codex', 'claude')) { continue }
             $words = [string]$speechRecord.text
-            if ($words.Trim()) { $script:desktopReplies[$speechRecord.source] = $words }
+            if ($words.Trim()) {
+                $script:desktopReplies[$speechRecord.source] = $words
+                $script:noticeSource = [string]$speechRecord.source
+                $script:noticeUntil = [DateTime]::UtcNow.AddSeconds(25)
+                $name = if ($script:noticeSource -eq 'codex') { 'Codex' } else { 'Claude' }
+                $noticeButton.Content = "$name replied - read"
+                $noticeButton.Background = if ($script:noticeSource -eq 'codex') {
+                    $script:codexBrush
+                } else { $script:claudeBrush }
+            }
         } catch {
             Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue
         }
@@ -564,6 +661,10 @@ function Send-KittyMessage {
     }
     $message = $chatText.Text.Trim()
     if (-not $message) { return }
+    $script:selectedDesktopSource = ''
+    $openAppButton.Visibility = [Windows.Visibility]::Collapsed
+    $name = if ($script:chatProvider -eq 'codex') { 'Codex' } else { 'Claude' }
+    $chatHeader.Text = "Message Kitty - $name"
     $backend = Join-Path $PSScriptRoot 'Mr-Kitty-Chat.py'
     $python = $env:MR_KITTY_PYTHON
     if (-not $python) {
@@ -607,6 +708,12 @@ $voiceButton.Add_Click({
 $codexButton.Add_Click({ Set-KittyProvider 'codex' })
 $claudeButton.Add_Click({ Set-KittyProvider 'claude' })
 $sendButton.Add_Click({ Send-KittyMessage })
+$noticeButton.Add_Click({ Show-DesktopReply $script:noticeSource })
+$openAppButton.Add_Click({
+    if (-not (Open-KittySourceApp $script:selectedDesktopSource)) {
+        $chatStatus.Text = 'App window unavailable. Open Codex or Claude normally.'
+    }
+})
 $hearButton.Add_Click({
     if ($script:isSpeaking) { Stop-KittySpeaking }
     elseif ($script:hasSpeakableReply) { Speak-KittyAnswer $chatAnswerView.Text }
@@ -621,11 +728,7 @@ $desktopButton.Add_Click({
         $item.IsEnabled = $script:desktopReplies.ContainsKey($source)
         $item.Add_Click({
             param($sender, $event)
-            Stop-KittySpeaking
-            $key = [string]$sender.Tag
-            $chatAnswerView.Text = [string]$script:desktopReplies[$key]
-            $script:hasSpeakableReply = $true
-            $chatStatus.Text = 'Desktop reply selected - press Hear to play it.'
+            Show-DesktopReply ([string]$sender.Tag)
         })
         $null = $menu.Items.Add($item)
     }
@@ -666,12 +769,31 @@ $composer.Add_Closing({
     $composer.Hide()
 })
 Set-KittyProvider 'codex'
+if ($ReplySmokeTest) {
+    foreach ($source in @('codex', 'claude')) {
+        $full = ("A complete $source reply with more than a tiny status bubble. " * 20)
+        $script:desktopReplies[$source] = $full
+        $script:noticeSource = $source
+        $noticeButton.RaiseEvent([Windows.RoutedEventArgs]::new(
+            [Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+        if ($chatAnswerView.Text -ne $full -or $composer.Width -lt 400 -or
+            $composer.Height -lt 400 -or
+            $openAppButton.Visibility -ne [Windows.Visibility]::Visible -or
+            $script:selectedDesktopSource -ne $source) {
+            throw "Full $source reply did not open from Kitty notice."
+        }
+    }
+    Remove-Item -LiteralPath $script:captureEnabledFlag -Force -ErrorAction SilentlyContinue
+    Write-Output 'Codex and Claude notice clicks open complete scrolling replies.'
+    exit 0
+}
 
 function Update-KittyDock {
     $bounds = Get-KittyBounds
     if ($bounds) { $script:lastBounds = $bounds }
     if (-not $bounds -and -not $script:mode) {
         $dock.Hide()
+        $notice.Hide()
         $script:voiceTurn = $false
         Stop-KittyListening
         Stop-KittySpeaking
@@ -687,6 +809,15 @@ function Update-KittyDock {
     $composer.Left = $placement.ComposerLeft
     $composer.Top = $placement.ComposerTop
     if (-not $dock.IsVisible) { $dock.Show() }
+    if ($script:noticeSource -and [DateTime]::UtcNow -lt $script:noticeUntil) {
+        $right = $dock.Left + $dock.Width + 5
+        $notice.Left = if ($right + $notice.Width -le $screen.Right) {
+            $right
+        } else { [Math]::Max($screen.Left, $dock.Left - $notice.Width - 5) }
+        $notice.Top = [Math]::Max($screen.Top,
+            [Math]::Min($screen.Bottom - $notice.Height, $dock.Top))
+        if (-not $notice.IsVisible) { $notice.Show() }
+    } else { $notice.Hide() }
 }
 
 $script:mode = ''
@@ -887,6 +1018,7 @@ try {
     Restore-Kitty
     $dock.Close()
     $composer.Close()
+    $notice.Close()
     $tray.Visible = $false
     $tray.Dispose()
     $trayMenu.Dispose()
